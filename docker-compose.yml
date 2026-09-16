@@ -1,0 +1,88 @@
+# Orquestracao do atelie: banco, API e interface.
+#
+# Os dois componentes vivem em repositorios git separados, clonados lado a lado:
+#
+#   ./atelie-web/   <- este repositorio (e este compose)
+#   ./atelie-api/
+#
+# Por isso o servico "api" usa build.context: ../atelie-api — o Docker precisa do
+# codigo da API, que nao esta neste repositorio. Se as pastas nao estiverem lado a
+# lado com esses nomes, o build da API falha. Ver README.
+
+name: atelie
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ../atelie-api
+      target: dev
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      ADMIN_TOKEN: ${ADMIN_TOKEN}
+      MEDIA_DIR: /app/media
+    ports:
+      - '8000:8000'
+    volumes:
+      # Hot reload: codigo da API vem do host; media e volume nomeado.
+      - ../atelie-api:/app
+      - media:/app/media
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  web:
+    build:
+      context: .
+      target: dev
+    environment:
+      # Servidor Next -> rede interna do Docker; navegador -> porta publicada no host.
+      API_INTERNAL_URL: ${API_INTERNAL_URL}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+    ports:
+      - '3000:3000'
+    volumes:
+      # Hot reload: codigo do host, mas node_modules e .next ficam na imagem/volume.
+      - .:/app
+      - /app/node_modules
+      - nextcache:/app/.next
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      # 127.0.0.1 e nao localhost: o busybox wget tentaria ::1, e o Next escuta em IPv4.
+      test: ['CMD-SHELL', 'wget --spider -q http://127.0.0.1:3000/ || exit 1']
+      interval: 10s
+      # Folga generosa: a primeira compilacao do next dev leva alguns segundos.
+      timeout: 15s
+      retries: 6
+      start_period: 60s
+
+volumes:
+  pgdata:
+  media:
+  nextcache:
