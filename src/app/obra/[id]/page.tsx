@@ -95,6 +95,13 @@ export default async function PhotoPage({ params }: PhotoPageProps) {
               </dd>
             </div>
           </dl>
+
+          <Link
+            href="/cadastro"
+            className="mt-10 inline-block bg-ink px-8 py-3 text-sm text-paper transition-opacity hover:opacity-85"
+          >
+            Tenho interesse
+          </Link>
         </article>
       </div>
     </main>

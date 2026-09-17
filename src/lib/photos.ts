@@ -25,3 +25,29 @@ export function listPhotos(filters: PhotoFilters = {}): Promise<Page<Photo>> {
 export function getPhoto(id: number): Promise<Photo> {
   return apiFetch<Photo>(`/api/photos/${id}`);
 }
+
+function adminHeaders(token: string): HeadersInit {
+  return { 'X-Admin-Token': token };
+}
+
+/** POST /api/photos — multipart com a imagem e os metadados. */
+export function createPhoto(data: FormData, token: string): Promise<Photo> {
+  return apiFetch<Photo>('/api/photos', { method: 'POST', body: data, headers: adminHeaders(token) });
+}
+
+/** PUT /api/photos/{id} — metadados; imagem nova e opcional. */
+export function updatePhoto(id: number, data: FormData, token: string): Promise<Photo> {
+  return apiFetch<Photo>(`/api/photos/${id}`, {
+    method: 'PUT',
+    body: data,
+    headers: adminHeaders(token),
+  });
+}
+
+/** DELETE /api/photos/{id} — apaga o registro e o arquivo. */
+export function deletePhoto(id: number, token: string): Promise<{ detail: string }> {
+  return apiFetch<{ detail: string }>(`/api/photos/${id}`, {
+    method: 'DELETE',
+    headers: adminHeaders(token),
+  });
+}

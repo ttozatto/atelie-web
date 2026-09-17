@@ -7,9 +7,12 @@ export function SiteHeader() {
         <Link href="/" className="font-serif text-2xl tracking-tight">
           Ateliê
         </Link>
-        <nav aria-label="Principal" className="text-sm text-muted">
+        <nav aria-label="Principal" className="flex gap-6 text-sm text-muted">
           <Link href="/" className="transition-colors hover:text-ink">
             Galeria
+          </Link>
+          <Link href="/cadastro" className="transition-colors hover:text-ink">
+            Cadastro
           </Link>
         </nav>
       </div>

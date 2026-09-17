@@ -6,7 +6,7 @@ sobe o sistema inteiro.
 
 ## Status
 
-Etapa 4 concluida: galeria publica com busca e filtro por categoria, e pagina da obra.
+Etapa 5 concluida: galeria, pagina da obra, cadastro de clientes com CEP e painel admin.
 
 ## Paginas
 
@@ -14,10 +14,31 @@ Etapa 4 concluida: galeria publica com busca e filtro por categoria, e pagina da
 | --- | --- | --- |
 | `/` | Galeria das obras publicadas, com busca por texto e filtro por categoria | `GET /api/photos` |
 | `/obra/[id]` | Foto grande, descricao, formatos e preco em BRL | `GET /api/photos/{id}` |
+| `/cadastro` | Formulario de cliente com endereco preenchido pelo CEP | `GET /api/cep/{cep}`, `POST /api/customers` |
+| `/admin` | Painel: token, nova obra com upload, edicao inline e exclusao | `GET`, `POST`, `PUT`, `DELETE /api/photos` |
 
-As duas sao Server Components: buscam os dados no servidor do Next, pela rede interna
-do Docker. A busca e o filtro funcionam sem JavaScript no cliente — o formulario faz
-`GET` na propria galeria e o estado fica na URL (`/?q=serra&category=paisagem`).
+A galeria e a pagina da obra sao Server Components: buscam os dados no servidor do Next,
+pela rede interna do Docker. A busca e o filtro funcionam sem JavaScript no cliente — o
+formulario faz `GET` na propria galeria e o estado fica na URL
+(`/?q=serra&category=paisagem`).
+
+`/cadastro` e `/admin` sao Client Components, porque sao interativos: as chamadas saem
+do navegador para `NEXT_PUBLIC_API_URL`, liberadas pelo CORS da API.
+
+### Cadastro e CEP
+
+Ao sair do campo CEP com 8 digitos, a tela chama `GET /api/cep/{cep}` — a nossa API,
+nunca o ViaCEP direto — e preenche rua, bairro, cidade e UF, levando o foco para o
+numero. Os estados tratados sao: buscando, CEP nao encontrado (404) e servico fora do ar
+(502/504 ou API inacessivel); nos dois ultimos o endereco pode ser preenchido a mao.
+E-mail ja cadastrado (409) aparece como mensagem no formulario.
+
+### Painel e o token
+
+O painel nao tem autenticacao real. O campo no topo recebe o valor de `ADMIN_TOKEN`, que
+e enviado no header `X-Admin-Token` das rotas de escrita. O token fica **so em estado de
+memoria** do React: nao vai para `localStorage`, cookie nem URL, e some ao recarregar.
+E um **placeholder de MVP academico, nao autenticacao** — ver o README da `atelie-api`.
 
 ### Imagens
 
