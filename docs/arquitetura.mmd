@@ -1,0 +1,21 @@
+%%{init: {"theme": "neutral", "flowchart": {"curve": "basis", "padding": 16}}}%%
+flowchart TB
+    browser["<b>Navegador</b><br/>visitante e painel"]
+
+    subgraph compose["docker compose"]
+        direction TB
+        web["<b>atelie-web</b><br/>Next.js 15 · :3000"]
+        api["<b>atelie-api</b><br/>FastAPI · :8000"]
+        db[("<b>PostgreSQL 16</b><br/>:5432 · volume pgdata")]
+        media[("<b>volume media</b><br/>/app/media")]
+    end
+
+    viacep["<b>ViaCEP</b><br/>viacep.com.br<br/>serviço externo"]
+
+    browser -- "páginas" --> web
+    browser -- "REST: /cadastro e /admin<br/>NEXT_PUBLIC_API_URL" --> api
+    web -- "REST: galeria e obra<br/>API_INTERNAL_URL" --> api
+    web -. "/media (next/image)" .-> api
+    api -- "SQLAlchemy" --> db
+    api -- "imagens" --> media
+    api -- "GET /ws/{cep}/json/" --> viacep

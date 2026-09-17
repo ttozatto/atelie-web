@@ -1,140 +1,266 @@
 # atelie-web
 
-Interface do catalogo de fotografias em print e quadro. Next.js 15 (App Router),
-TypeScript e Tailwind. Este repositorio tambem guarda o `docker-compose.yml` que
-sobe o sistema inteiro.
+Interface do **Ateliê**, catálogo online de fotografias em print e quadro. Tem uma galeria
+pública das obras, a página de cada obra, um cadastro de clientes interessados com
+endereço preenchido a partir do CEP e um painel simples onde a fotógrafa sobe as fotos e
+define preço.
 
-## Status
+Next.js 15 (App Router), TypeScript e Tailwind CSS. Este repositório também guarda o
+`docker-compose.yml` que sobe o sistema inteiro.
 
-Etapa 5 concluida: galeria, pagina da obra, cadastro de clientes com CEP e painel admin.
+Repositório da API: `atelie-api` — FastAPI, SQLAlchemy e PostgreSQL.
 
-## Paginas
+## Arquitetura
 
-| Rota | Tela | Chamada a API |
-| --- | --- | --- |
-| `/` | Galeria das obras publicadas, com busca por texto e filtro por categoria | `GET /api/photos` |
-| `/obra/[id]` | Foto grande, descricao, formatos e preco em BRL | `GET /api/photos/{id}` |
-| `/cadastro` | Formulario de cliente com endereco preenchido pelo CEP | `GET /api/cep/{cep}`, `POST /api/customers` |
-| `/admin` | Painel: token, nova obra com upload, edicao inline e exclusao | `GET`, `POST`, `PUT`, `DELETE /api/photos` |
+```mermaid
+%%{init: {"theme": "neutral", "flowchart": {"curve": "basis", "padding": 16}}}%%
+flowchart TB
+    browser["<b>Navegador</b><br/>visitante e painel"]
 
-A galeria e a pagina da obra sao Server Components: buscam os dados no servidor do Next,
-pela rede interna do Docker. A busca e o filtro funcionam sem JavaScript no cliente — o
-formulario faz `GET` na propria galeria e o estado fica na URL
-(`/?q=serra&category=paisagem`).
+    subgraph compose["docker compose"]
+        direction TB
+        web["<b>atelie-web</b><br/>Next.js 15 · :3000"]
+        api["<b>atelie-api</b><br/>FastAPI · :8000"]
+        db[("<b>PostgreSQL 16</b><br/>:5432 · volume pgdata")]
+        media[("<b>volume media</b><br/>/app/media")]
+    end
 
-`/cadastro` e `/admin` sao Client Components, porque sao interativos: as chamadas saem
-do navegador para `NEXT_PUBLIC_API_URL`, liberadas pelo CORS da API.
+    viacep["<b>ViaCEP</b><br/>viacep.com.br<br/>serviço externo"]
 
-### Cadastro e CEP
+    browser -- "páginas" --> web
+    browser -- "REST: /cadastro e /admin<br/>NEXT_PUBLIC_API_URL" --> api
+    web -- "REST: galeria e obra<br/>API_INTERNAL_URL" --> api
+    web -. "/media (next/image)" .-> api
+    api -- "SQLAlchemy" --> db
+    api -- "imagens" --> media
+    api -- "GET /ws/{cep}/json/" --> viacep
+```
 
-Ao sair do campo CEP com 8 digitos, a tela chama `GET /api/cep/{cep}` — a nossa API,
-nunca o ViaCEP direto — e preenche rua, bairro, cidade e UF, levando o foco para o
-numero. Os estados tratados sao: buscando, CEP nao encontrado (404) e servico fora do ar
-(502/504 ou API inacessivel); nos dois ultimos o endereco pode ser preenchido a mao.
-E-mail ja cadastrado (409) aparece como mensagem no formulario.
+A mesma figura em imagem: [`docs/arquitetura.png`](docs/arquitetura.png) (gerada a partir
+de [`docs/arquitetura.mmd`](docs/arquitetura.mmd)).
 
-### Painel e o token
+![Arquitetura do Ateliê](docs/arquitetura.png)
 
-O painel nao tem autenticacao real. O campo no topo recebe o valor de `ADMIN_TOKEN`, que
-e enviado no header `X-Admin-Token` das rotas de escrita. O token fica **so em estado de
-memoria** do React: nao vai para `localStorage`, cookie nem URL, e some ao recarregar.
-E um **placeholder de MVP academico, nao autenticacao** — ver o README da `atelie-api`.
+| Componente | Papel |
+| --- | --- |
+| **atelie-web** | Interface. Renderiza as páginas e chama a API via REST. |
+| **atelie-api** | API REST. Regras de negócio, upload de imagens e consumo do ViaCEP. |
+| **PostgreSQL** | Persistência das obras (`photos`) e dos clientes (`customers`). |
+| **ViaCEP** | Serviço externo de consulta de CEP, chamado **somente pela API**. |
 
-### Imagens
+### Duas URLs para a mesma API
 
-O `next/image` redimensiona as fotos, e quem baixa o arquivo original e o otimizador,
-que roda no **servidor** do Next — onde `localhost:8000` nao e a API. Por isso o
-`next.config.ts` reescreve `/media/*` para `API_INTERNAL_URL/media/*`, e os componentes
-usam o `image_path` relativo que a API devolve (`/media/a1b2.jpg`). O navegador nunca
-precisa conhecer o host da API para exibir uma foto.
+A interface alcança a API por dois caminhos, e a escolha está concentrada num único
+arquivo, [`src/lib/api.ts`](src/lib/api.ts) — nenhum componente monta URL de API por
+conta própria.
 
-### Obra inexistente e status HTTP
+- **Servidor do Next** (galeria e página da obra, que são Server Components): fala com
+  `API_INTERNAL_URL` = `http://api:8000`, o nome do serviço na rede interna do Docker.
+- **Navegador** (cadastro e painel, que são Client Components): fala com
+  `NEXT_PUBLIC_API_URL` = `http://localhost:8000`, a porta publicada no host. O navegador
+  não conhece o nome `api`; por isso a API libera essa origem no CORS.
 
-A pagina da obra tem estado de carregamento (`loading.tsx`), o que faz o Next enviar a
-resposta em streaming. Consequencia: uma obra inexistente ou nao publicada mostra a
-tela de "nao encontrada" com status `200` e `<meta name="robots" content="noindex">`,
-em vez de `404`. Foi uma escolha consciente — sem o `loading.tsx` o status seria `404`,
-mas a tela perderia o estado de carregamento.
+As imagens são um terceiro caso: quem baixa o arquivo original é o otimizador do
+`next/image`, que roda no servidor. O [`next.config.ts`](next.config.ts) reescreve
+`/media/*` para `API_INTERNAL_URL/media/*`, e os componentes usam o `image_path` relativo
+devolvido pela API (`/media/a1b2.jpg`).
 
-## Pre-requisitos
+## Pré-requisitos
 
-Docker e Docker Compose v2. Nada de Node ou Python no host — todo comando de
+Docker e Docker Compose v2. Nada de Node nem Python no host: todo comando de
 desenvolvimento roda em contêiner.
 
-## Os dois repositorios lado a lado
+## Os dois repositórios lado a lado
 
-Os componentes vivem em repositorios git separados e precisam ser clonados lado a
-lado, com esses nomes:
+Interface e API vivem em repositórios git separados e precisam ser clonados **lado a
+lado**, com estes nomes:
 
 ```
-./atelie-web/     # este repositorio (contem o docker-compose.yml)
+./atelie-web/     # este repositório (contém o docker-compose.yml)
 ./atelie-api/
 ```
 
-O servico `api` do compose usa `build.context: ../atelie-api`, porque o codigo da
-API nao esta neste repositorio. Se as pastas nao estiverem lado a lado, o build da
-API falha.
+O serviço `api` do compose usa `build.context: ../atelie-api`, porque o código da API
+não está neste repositório: o Docker precisa ler a pasta vizinha para construir a imagem
+e para o bind mount do hot reload. Se as pastas não estiverem lado a lado com esses
+nomes, o build da API falha. O mesmo aviso está comentado no topo do
+`docker-compose.yml`.
 
-## Instalacao e execucao
+## Instalação e execução
 
 ```bash
+# na mesma pasta, clone os dois repositórios
+git clone <url-do-repositorio>/atelie-web.git
+git clone <url-do-repositorio>/atelie-api.git
+cd atelie-web
 cp .env.example .env
 docker compose up --build
 ```
 
-- Interface: http://localhost:3000
-- API: http://localhost:8000
-- Swagger: http://localhost:8000/docs
-- Health: http://localhost:8000/health
+Os três serviços sobem com healthcheck (`db` → `api` → `web`, cada um esperando o
+anterior ficar saudável).
 
-Para derrubar tudo, incluindo volumes (banco e imagens):
+| Endereço | O que é |
+| --- | --- |
+| http://localhost:3000 | Interface |
+| http://localhost:3000/admin | Painel (pede o `ADMIN_TOKEN` do `.env`) |
+| http://localhost:8000/docs | Swagger da API |
+| http://localhost:8000/health | Health check da API e do banco |
+
+Para popular o catálogo com 8 obras de exemplo (imagens geradas na hora, sem depender
+de foto real):
+
+```bash
+docker compose exec api python -m scripts.seed
+```
+
+Hot reload nos dois serviços: o código vem do host por bind mount. Para derrubar tudo,
+incluindo banco e imagens:
 
 ```bash
 docker compose down -v
 ```
 
-Hot reload nos dois servicos: o codigo vem do host por bind mount.
+## Variáveis de ambiente
 
-## Variaveis de ambiente
+O `.env` na raiz deste repositório alimenta os três serviços do compose. Ele **não** é
+versionado; o modelo versionado é o [`.env.example`](.env.example).
 
-O `.env` na raiz deste repositorio alimenta os tres servicos do compose. Ele **nao**
-e versionado; o modelo versionado e o `.env.example`.
+| Variável | Serviço | Descrição | Valor padrão |
+| --- | --- | --- | --- |
+| `POSTGRES_DB` | db | Nome do banco | `atelie` |
+| `POSTGRES_USER` | db | Usuário do banco | `atelie` |
+| `POSTGRES_PASSWORD` | db | Senha do banco | `atelie` |
+| `DATABASE_URL` | api | Conexão SQLAlchemy (host `db` dentro do compose) | `postgresql+psycopg://atelie:atelie@db:5432/atelie` |
+| `CORS_ORIGINS` | api | Origens liberadas no CORS, separadas por vírgula | `http://localhost:3000` |
+| `ADMIN_TOKEN` | api | Token esperado no header `X-Admin-Token` | `troque-este-token` |
+| `API_INTERNAL_URL` | web | API vista pelo **servidor** do Next | `http://api:8000` |
+| `NEXT_PUBLIC_API_URL` | web | API vista pelo **navegador** | `http://localhost:8000` |
 
-| Variavel | Servico | Descricao |
-| --- | --- | --- |
-| `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | db | Credenciais do PostgreSQL |
-| `DATABASE_URL` | api | Conexao SQLAlchemy (host `db` dentro do compose) |
-| `CORS_ORIGINS` | api | Origens liberadas no CORS |
-| `ADMIN_TOKEN` | api | Token do header `X-Admin-Token` nas rotas de escrita |
-| `API_INTERNAL_URL` | web | URL da API vista pelo **servidor** Next (`http://api:8000`) |
-| `NEXT_PUBLIC_API_URL` | web | URL da API vista pelo **navegador** (`http://localhost:8000`) |
+### Acessando a VM de outra máquina
 
-### Por que duas URLs para a mesma API
-
-Dentro do Compose, o servidor do Next alcanca a API pelo nome de servico da rede
-Docker (`http://api:8000`); o navegador do usuario nao conhece esse nome e precisa da
-porta publicada no host (`http://localhost:8000`). As duas variaveis existem por isso,
-e a escolha entre elas esta concentrada em [`src/lib/api.ts`](src/lib/api.ts) — nenhum
-componente monta URL de API por conta propria.
-
-### Acessando a VM de outra maquina
-
-`NEXT_PUBLIC_API_URL` e o endereco da API **visto pelo navegador**. Com o valor padrao
-(`http://localhost:8000`), a interface so funciona num navegador rodando na propria VM.
-Se voce abre a interface de outra maquina da rede (ex.: `http://192.168.0.2:3000`),
-`localhost` passa a ser a sua maquina, e as telas que chamam a API pelo navegador
-(`/cadastro` e `/admin`) nao a alcancam. Nesse caso, no `.env`:
+`NEXT_PUBLIC_API_URL` é o endereço da API visto pelo navegador. Com o valor padrão, as
+telas que chamam a API pelo navegador (`/cadastro` e `/admin`) só funcionam num
+navegador rodando na própria máquina do Docker. Se você abre a interface de outra
+máquina da rede (ex.: `http://192.168.0.2:3000`), `localhost` passa a ser a sua máquina.
+Nesse caso, ajuste o `.env` com o IP da VM:
 
 ```bash
 NEXT_PUBLIC_API_URL=http://192.168.0.2:8000
 CORS_ORIGINS=http://localhost:3000,http://192.168.0.2:3000
 ```
 
-e recrie os servicos com `docker compose up -d`. A galeria e a pagina da obra nao sao
-afetadas, porque buscam os dados no servidor pela rede interna (`API_INTERNAL_URL`).
+e recrie os serviços com `docker compose up -d`. A galeria e a página da obra não são
+afetadas, porque buscam os dados pela rede interna.
+
+## Páginas
+
+| Rota | Tela | Chamadas à API |
+| --- | --- | --- |
+| `/` | Galeria das obras publicadas, com busca por texto e filtro por categoria | `GET /api/photos` |
+| `/obra/[id]` | Foto grande, descrição, formatos e preço em BRL | `GET /api/photos/{id}` |
+| `/cadastro` | Cadastro de cliente com endereço preenchido pelo CEP | `GET /api/cep/{cep}`, `POST /api/customers` |
+| `/admin` | Painel: nova obra com upload, edição inline e exclusão | `GET`, `POST`, `PUT` e `DELETE /api/photos` |
+
+O mapeamento detalhado de cada método HTTP para a tela e o botão que o dispara está em
+[`docs/http-methods.md`](docs/http-methods.md).
+
+Toda tela que busca dados tem estado de carregando, vazio e erro. A busca e o filtro da
+galeria funcionam sem JavaScript no cliente: o formulário faz `GET` na própria página e o
+estado fica na URL (`/?q=serra&category=paisagem`).
+
+## ViaCEP
+
+### O que é
+
+O [ViaCEP](https://viacep.com.br) é um webservice público e gratuito de consulta de CEP
+brasileiro. A partir de um CEP de 8 dígitos, devolve logradouro, bairro, cidade, UF e
+códigos auxiliares (IBGE, DDD).
+
+### Cadastro e termos de uso
+
+- **Não exige cadastro**, chave de API nem autenticação.
+- O uso é gratuito. O serviço não publica limite de requisições, mas avisa que o abuso
+  leva a bloqueio: "Uso massivo para validação de bases de dados locais, poderá
+  automaticamente bloquear seu acesso".
+- O ViaCEP orienta validar o formato do CEP antes de consultar e tratar a resposta de CEP
+  inexistente.
+
+No Ateliê a consulta é pontual e iniciada por uma pessoa: só acontece quando alguém sai
+do campo CEP com 8 dígitos, não é refeita para um CEP que já foi encontrado e um CEP
+malformado é recusado pela nossa API antes de qualquer chamada externa.
+
+### Rota consumida
+
+```
+GET https://viacep.com.br/ws/{cep}/json/
+```
+
+O navegador **nunca** chama o ViaCEP. A interface só conhece a rota da nossa API,
+`GET /api/cep/{cep}`; a `atelie-api` consulta o ViaCEP e converte a resposta para o
+nosso schema:
+
+| Campo do ViaCEP | Campo da nossa API |
+| --- | --- |
+| `logradouro` | `street` |
+| `bairro` | `district` |
+| `localidade` | `city` |
+| `uf` | `state` |
+
+### Tratamento de erro
+
+| Situação | Resposta da nossa API | O que a tela de cadastro mostra |
+| --- | --- | --- |
+| CEP encontrado | `200` com o endereço | Preenche rua, bairro, cidade e UF e foca o número |
+| CEP fora do formato de 8 dígitos | `422`, sem consultar o ViaCEP | O campo não dispara a consulta |
+| ViaCEP responde `{"erro": true}` (CEP inexistente) | `404` | "CEP não encontrado" |
+| ViaCEP não responde a tempo (5 s) | `504` | "O serviço de CEP está fora do ar" |
+| ViaCEP fora do ar ou resposta inválida | `502` | "O serviço de CEP está fora do ar" |
+| Navegador não alcança a nossa API | — | "Não foi possível falar com o servidor" |
+
+Nos casos de erro, o endereço pode ser preenchido à mão. A implementação da consulta
+está em `atelie-api/app/services/viacep.py`, e a da tela em
+[`src/components/CustomerForm.tsx`](src/components/CustomerForm.tsx).
+
+## Painel e o token de administração
+
+O painel **não tem autenticação real**. O campo no topo de `/admin` recebe o valor de
+`ADMIN_TOKEN`, enviado no header `X-Admin-Token` das rotas de escrita de fotos. O token
+fica só em estado de memória do React: não vai para `localStorage`, cookie nem URL, e
+some ao recarregar a página.
+
+> **Isto é um placeholder de MVP acadêmico, não autenticação.** Não há usuários, sessões,
+> senhas nem expiração. Num sistema real, trocar por autenticação de verdade.
+
+## Decisões e limitações conhecidas
+
+- **Obra inexistente responde `200`.** A página da obra tem estado de carregamento
+  (`loading.tsx`), o que faz o Next enviar a resposta em streaming; quando a obra não
+  existe, o status já foi enviado. A tela mostra "Obra não encontrada" e o Next marca a
+  página com `noindex`. Sem o `loading.tsx` o status seria `404`, mas a tela perderia o
+  estado de carregamento.
+- **Healthcheck em `/healthz`.** Rota leve que não renderiza página nem chama a API, para
+  a saúde do `web` não depender da `api`.
+- **Galeria sem paginação na tela.** A API pagina (`limit`/`offset`); a galeria pede até
+  100 obras, suficiente para o catálogo do MVP.
 
 ## Qualidade
 
 ```bash
-docker compose exec web npm run lint
+docker compose exec web npm run lint     # eslint
+docker compose exec web npx tsc --noEmit # checagem de tipos
+```
+
+Sem `any` e sem `console.log` no código; componentes React em PascalCase.
+
+## Estrutura
+
+```
+src/
+  app/            rotas do App Router (/, /obra/[id], /cadastro, /admin, /healthz)
+  components/     componentes React (PascalCase)
+  lib/            cliente da API, tipos, formatação, máscaras
+docs/
+  arquitetura.mmd / arquitetura.png   diagrama da arquitetura
+  http-methods.md                     método HTTP → tela
 ```
