@@ -6,9 +6,13 @@
  *   pela rede interna do Docker  -> API_INTERNAL_URL
  * - codigo de navegador fala com http://localhost:8000, que e o que o host expoe
  *   -> NEXT_PUBLIC_API_URL
+ *
+ * Imagens sao um terceiro caso: quem baixa o arquivo e o otimizador do next/image, que
+ * roda no servidor. Por isso o Next reescreve /media/* para a URL interna (ver
+ * next.config.ts) e os componentes usam o image_path relativo, ex.: /media/a1b2.jpg.
  */
 
-const INTERNAL_BASE_URL = process.env.API_INTERNAL_URL ?? 'http://api:8000';
+export const INTERNAL_BASE_URL = process.env.API_INTERNAL_URL ?? 'http://api:8000';
 const PUBLIC_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
 
 /** Base correta para o ambiente onde o codigo esta executando. */

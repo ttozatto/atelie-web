@@ -6,8 +6,34 @@ sobe o sistema inteiro.
 
 ## Status
 
-Etapa 1 (infra) concluida: os tres servicos sobem no Compose com healthcheck verde
-e a home responde "olá".
+Etapa 4 concluida: galeria publica com busca e filtro por categoria, e pagina da obra.
+
+## Paginas
+
+| Rota | Tela | Chamada a API |
+| --- | --- | --- |
+| `/` | Galeria das obras publicadas, com busca por texto e filtro por categoria | `GET /api/photos` |
+| `/obra/[id]` | Foto grande, descricao, formatos e preco em BRL | `GET /api/photos/{id}` |
+
+As duas sao Server Components: buscam os dados no servidor do Next, pela rede interna
+do Docker. A busca e o filtro funcionam sem JavaScript no cliente — o formulario faz
+`GET` na propria galeria e o estado fica na URL (`/?q=serra&category=paisagem`).
+
+### Imagens
+
+O `next/image` redimensiona as fotos, e quem baixa o arquivo original e o otimizador,
+que roda no **servidor** do Next — onde `localhost:8000` nao e a API. Por isso o
+`next.config.ts` reescreve `/media/*` para `API_INTERNAL_URL/media/*`, e os componentes
+usam o `image_path` relativo que a API devolve (`/media/a1b2.jpg`). O navegador nunca
+precisa conhecer o host da API para exibir uma foto.
+
+### Obra inexistente e status HTTP
+
+A pagina da obra tem estado de carregamento (`loading.tsx`), o que faz o Next enviar a
+resposta em streaming. Consequencia: uma obra inexistente ou nao publicada mostra a
+tela de "nao encontrada" com status `200` e `<meta name="robots" content="noindex">`,
+em vez de `404`. Foi uma escolha consciente — sem o `loading.tsx` o status seria `404`,
+mas a tela perderia o estado de carregamento.
 
 ## Pre-requisitos
 
