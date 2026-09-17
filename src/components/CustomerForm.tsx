@@ -21,7 +21,7 @@ const EMPTY_VALUES = {
 };
 
 type FormValues = typeof EMPTY_VALUES;
-type CepStatus = 'idle' | 'loading' | 'found' | 'not-found' | 'unavailable';
+type CepStatus = 'idle' | 'loading' | 'found' | 'not-found' | 'unavailable' | 'api-unreachable';
 type SubmitStatus =
   | { kind: 'idle' }
   | { kind: 'submitting' }
@@ -37,7 +37,17 @@ const CEP_MESSAGES: Record<CepStatus, { text: string; tone: 'muted' | 'danger' }
     text: 'O serviço de CEP está fora do ar. Preencha o endereço à mão.',
     tone: 'danger',
   },
+  'api-unreachable': {
+    text: 'Não foi possível falar com o servidor. Preencha o endereço à mão.',
+    tone: 'danger',
+  },
 };
+
+/** 404 = CEP inexistente; 502/504 = ViaCEP com problema; sem resposta = API inacessivel. */
+function cepStatusFromError(error: unknown): CepStatus {
+  if (!(error instanceof ApiError)) return 'api-unreachable';
+  return error.status === 404 ? 'not-found' : 'unavailable';
+}
 
 /** Checagens simples que o HTML nativo nao cobre. */
 function findProblem(values: FormValues): string | null {
@@ -98,7 +108,7 @@ export function CustomerForm() {
     } catch (error) {
       if (lastLookupRef.current !== cep) return;
       lastLookupRef.current = ''; // permite tentar de novo ao sair do campo
-      setCepStatus(error instanceof ApiError && error.status === 404 ? 'not-found' : 'unavailable');
+      setCepStatus(cepStatusFromError(error));
     }
   }
 

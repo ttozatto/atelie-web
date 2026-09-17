@@ -117,6 +117,22 @@ porta publicada no host (`http://localhost:8000`). As duas variaveis existem por
 e a escolha entre elas esta concentrada em [`src/lib/api.ts`](src/lib/api.ts) — nenhum
 componente monta URL de API por conta propria.
 
+### Acessando a VM de outra maquina
+
+`NEXT_PUBLIC_API_URL` e o endereco da API **visto pelo navegador**. Com o valor padrao
+(`http://localhost:8000`), a interface so funciona num navegador rodando na propria VM.
+Se voce abre a interface de outra maquina da rede (ex.: `http://192.168.0.2:3000`),
+`localhost` passa a ser a sua maquina, e as telas que chamam a API pelo navegador
+(`/cadastro` e `/admin`) nao a alcancam. Nesse caso, no `.env`:
+
+```bash
+NEXT_PUBLIC_API_URL=http://192.168.0.2:8000
+CORS_ORIGINS=http://localhost:3000,http://192.168.0.2:3000
+```
+
+e recrie os servicos com `docker compose up -d`. A galeria e a pagina da obra nao sao
+afetadas, porque buscam os dados no servidor pela rede interna (`API_INTERNAL_URL`).
+
 ## Qualidade
 
 ```bash
