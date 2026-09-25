@@ -107,8 +107,9 @@ anterior ficar saudável).
 | http://localhost:8000/docs | Swagger da API |
 | http://localhost:8000/health | Health check da API e do banco |
 
-Para popular o catálogo com 8 obras de exemplo (imagens geradas na hora, sem depender
-de foto real):
+Para popular o catálogo com 20 obras de exemplo e 5 clientes (as fotos são imagens do
+Unsplash versionadas na `atelie-api`, sob a Unsplash License — ver os créditos no
+repositório da API):
 
 ```bash
 docker compose exec api python -m scripts.seed
