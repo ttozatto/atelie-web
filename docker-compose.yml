@@ -40,7 +40,6 @@ services:
     ports:
       - '8000:8000'
     volumes:
-      # Hot reload: codigo da API vem do host; media e volume nomeado.
       - ../atelie-api:/app
       - media:/app/media
     depends_on:
@@ -60,13 +59,11 @@ services:
       context: .
       target: dev
     environment:
-      # Servidor Next -> rede interna do Docker; navegador -> porta publicada no host.
       API_INTERNAL_URL: ${API_INTERNAL_URL}
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
     ports:
       - '3000:3000'
     volumes:
-      # Hot reload: codigo do host, mas node_modules e .next ficam na imagem/volume.
       - .:/app
       - /app/node_modules
       - nextcache:/app/.next
@@ -74,11 +71,8 @@ services:
       api:
         condition: service_healthy
     healthcheck:
-      # /healthz e leve e nao depende da API (ver src/app/healthz/route.ts).
-      # 127.0.0.1 e nao localhost: o busybox wget tentaria ::1, e o Next escuta em IPv4.
       test: ['CMD-SHELL', 'wget -q -O /dev/null http://127.0.0.1:3000/healthz || exit 1']
       interval: 10s
-      # Folga generosa: a primeira compilacao do next dev leva alguns segundos.
       timeout: 15s
       retries: 6
       start_period: 60s
