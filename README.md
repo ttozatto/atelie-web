@@ -134,6 +134,8 @@ versionado; o modelo versionado é o [`.env.example`](.env.example).
 | `POSTGRES_PASSWORD` | db | Senha do banco | `atelie` |
 | `DATABASE_URL` | api | Conexão SQLAlchemy (host `db` dentro do compose) | `postgresql+psycopg://atelie:atelie@db:5432/atelie` |
 | `CORS_ORIGINS` | api | Origens liberadas no CORS, separadas por vírgula | `http://localhost:3000` |
+| `ADMIN_USERNAME` | api | Usuário da tela de login do painel | `admin` |
+| `ADMIN_PASSWORD` | api | Senha da tela de login do painel | `troque-esta-senha` |
 | `ADMIN_TOKEN` | api | Token esperado no header `X-Admin-Token` | `troque-este-token` |
 | `API_INTERNAL_URL` | web | API vista pelo **servidor** do Next | `http://api:8000` |
 | `NEXT_PUBLIC_API_URL` | web | API vista pelo **navegador** | `http://localhost:8000` |
@@ -161,7 +163,7 @@ afetadas, porque buscam os dados pela rede interna.
 | `/` | Galeria das obras publicadas, com busca por texto e filtro por categoria | `GET /api/photos` |
 | `/obra/[id]` | Foto grande, descrição, formatos e preço em BRL | `GET /api/photos/{id}` |
 | `/cadastro` | Cadastro de cliente com endereço preenchido pelo CEP | `GET /api/cep/{cep}`, `POST /api/customers` |
-| `/admin` | Painel: nova obra com upload, edição inline e exclusão | `GET`, `POST`, `PUT` e `DELETE /api/photos` |
+| `/admin` | Login e painel: nova obra com upload, edição inline e exclusão | `POST /api/auth/login`, `GET`, `POST`, `PUT` e `DELETE /api/photos` |
 
 O mapeamento detalhado de cada método HTTP para a tela e o botão que o dispara está em
 [`docs/http-methods.md`](docs/http-methods.md).
@@ -223,15 +225,20 @@ Nos casos de erro, o endereço pode ser preenchido à mão. A implementação da
 está em `atelie-api/app/services/viacep.py`, e a da tela em
 [`src/components/CustomerForm.tsx`](src/components/CustomerForm.tsx).
 
-## Painel e o token de administração
+## Painel e autenticação
 
-O painel **não tem autenticação real**. O campo no topo de `/admin` recebe o valor de
-`ADMIN_TOKEN`, enviado no header `X-Admin-Token` das rotas de escrita de fotos. O token
-fica só em estado de memória do React: não vai para `localStorage`, cookie nem URL, e
-some ao recarregar a página.
+`/admin` abre uma tela de login com **usuário e senha**. As credenciais não estão na
+interface: o formulário chama `POST /api/auth/login` na API, que as compara com as
+variáveis `ADMIN_USERNAME` e `ADMIN_PASSWORD` e devolve o token usado no header
+`X-Admin-Token` das rotas de escrita.
 
-> **Isto é um placeholder de MVP acadêmico, não autenticação.** Não há usuários, sessões,
-> senhas nem expiração. Num sistema real, trocar por autenticação de verdade.
+A sessão (usuário e token) fica **só em estado de memória** do React: não vai para
+`localStorage`, cookie nem URL. Ou seja, recarregar a página pede login de novo, e há um
+botão "Sair" no topo do painel.
+
+> **Isto é um placeholder de MVP acadêmico, não autenticação de verdade.** Um único
+> usuário, senha em texto puro no ambiente, token fixo sem expiração e sem revogação. As
+> limitações estão detalhadas no README da `atelie-api`.
 
 ## Decisões e limitações conhecidas
 

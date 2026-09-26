@@ -100,7 +100,7 @@ export function NewPhotoForm({ token, onCreated }: NewPhotoFormProps) {
         <div className="flex flex-wrap items-center gap-4">
           <button
             type="submit"
-            disabled={saving || !token}
+            disabled={saving}
             className="bg-ink px-6 py-2.5 text-sm text-paper transition-opacity hover:opacity-85 disabled:opacity-40"
           >
             {saving ? 'Enviando…' : 'Cadastrar obra'}

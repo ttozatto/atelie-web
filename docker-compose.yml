@@ -36,6 +36,8 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       CORS_ORIGINS: ${CORS_ORIGINS}
       ADMIN_TOKEN: ${ADMIN_TOKEN}
+      ADMIN_USERNAME: ${ADMIN_USERNAME}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       MEDIA_DIR: /app/media
     ports:
       - '8000:8000'

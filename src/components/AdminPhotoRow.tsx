@@ -73,7 +73,7 @@ export function AdminPhotoRow({ photo, token, onUpdated, onDeleted }: AdminPhoto
             <div className="flex flex-wrap items-center gap-4">
               <button
                 type="submit"
-                disabled={busy || !token}
+                disabled={busy}
                 className="bg-ink px-5 py-2 text-sm text-paper transition-opacity hover:opacity-85 disabled:opacity-40"
               >
                 {busy ? 'Salvando…' : 'Salvar'}
@@ -127,7 +127,7 @@ export function AdminPhotoRow({ photo, token, onUpdated, onDeleted }: AdminPhoto
             <span className="text-sm">Excluir obra e imagem?</span>
             <button
               type="button"
-              disabled={busy || !token}
+              disabled={busy}
               onClick={handleDelete}
               className="bg-danger px-3 py-1 text-sm text-paper disabled:opacity-40"
             >
@@ -146,7 +146,6 @@ export function AdminPhotoRow({ photo, token, onUpdated, onDeleted }: AdminPhoto
           <div className="flex items-center justify-end gap-4 text-sm">
             <button
               type="button"
-              disabled={!token}
               onClick={() => changeMode('edit')}
               className="underline-offset-4 hover:underline disabled:opacity-40"
             >
@@ -154,7 +153,6 @@ export function AdminPhotoRow({ photo, token, onUpdated, onDeleted }: AdminPhoto
             </button>
             <button
               type="button"
-              disabled={!token}
               onClick={() => changeMode('confirm-delete')}
               className="text-danger underline-offset-4 hover:underline disabled:opacity-40"
             >

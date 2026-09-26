@@ -1,11 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import type { Session } from '@/lib/auth';
 import { errorMessage } from '@/lib/errors';
 import { listPhotos } from '@/lib/photos';
 import type { Photo } from '@/lib/types';
+import { AdminLogin } from './AdminLogin';
 import { AdminPhotoRow } from './AdminPhotoRow';
-import { FormField, inputClassName } from './FormField';
 import { NewPhotoForm } from './NewPhotoForm';
 import { StateMessage } from './StateMessage';
 
@@ -15,9 +16,9 @@ type ListState =
   | { kind: 'ready'; photos: Photo[] };
 
 export function AdminPanel() {
-  // Placeholder de MVP academico, nao autenticacao: o token vive so neste estado
-  // em memoria. Nao vai para localStorage, cookie nem URL, e some ao recarregar.
-  const [token, setToken] = useState('');
+  // A sessao (usuario + token) vive so neste estado em memoria: nao vai para
+  // localStorage, cookie nem URL, e some ao recarregar a pagina.
+  const [session, setSession] = useState<Session | null>(null);
   const [list, setList] = useState<ListState>({ kind: 'loading' });
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -32,8 +33,9 @@ export function AdminPanel() {
   }, []);
 
   useEffect(() => {
-    void loadPhotos();
-  }, [loadPhotos]);
+    // A lista so e buscada depois do login, quando o painel aparece.
+    if (session) void loadPhotos();
+  }, [loadPhotos, session]);
 
   function updatePhotos(change: (photos: Photo[]) => Photo[]) {
     setList((current) =>
@@ -41,33 +43,27 @@ export function AdminPanel() {
     );
   }
 
+  if (session === null) {
+    return <AdminLogin onAuthenticated={setSession} />;
+  }
+
   return (
     <div className="flex flex-col gap-16">
-      <section className="flex flex-col gap-6 border-b border-line pb-10 md:flex-row md:items-end md:justify-between">
+      <section className="flex flex-col gap-4 border-b border-line pb-10 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="font-serif text-4xl tracking-tight sm:text-5xl">Painel</h1>
           <p className="mt-3 text-sm text-muted">Cadastre, edite e exclua as obras do catálogo.</p>
         </div>
-        <FormField
-          label="Token do painel"
-          htmlFor="admin-token"
-          className="w-full md:w-80"
-          hint={
-            token
-              ? 'Fica só na memória desta aba e some ao recarregar.'
-              : 'Sem token o painel só lê. Cole o valor de ADMIN_TOKEN.'
-          }
-        >
-          <input
-            id="admin-token"
-            type="password"
-            autoComplete="off"
-            spellCheck={false}
-            value={token}
-            onChange={(event) => setToken(event.target.value.trim())}
-            className={inputClassName}
-          />
-        </FormField>
+        <p className="text-sm text-muted">
+          {session.username}
+          <button
+            type="button"
+            onClick={() => setSession(null)}
+            className="ml-4 underline underline-offset-4 transition-colors hover:text-ink"
+          >
+            Sair
+          </button>
+        </p>
       </section>
 
       <section aria-labelledby="new-photo-title" className="flex flex-col gap-8">
@@ -75,7 +71,7 @@ export function AdminPanel() {
           Nova obra
         </h2>
         <NewPhotoForm
-          token={token}
+          token={session.token}
           onCreated={(photo) => {
             updatePhotos((photos) => [photo, ...photos]);
             setNotice(`“${photo.title}” cadastrada.`);
@@ -145,7 +141,7 @@ export function AdminPanel() {
                   <AdminPhotoRow
                     key={photo.id}
                     photo={photo}
-                    token={token}
+                    token={session.token}
                     onUpdated={(updated) => {
                       updatePhotos((photos) =>
                         photos.map((item) => (item.id === updated.id ? updated : item)),

@@ -13,6 +13,7 @@ servidor do Next (`API_INTERNAL_URL`) ou no navegador (`NEXT_PUBLIC_API_URL`).
 | `GET` | `/obra/[id]` — página da obra | `GET /api/photos/{id}` | Servidor do Next |
 | `GET` | `/cadastro` — ao sair do campo CEP | `GET /api/cep/{cep}` | Navegador |
 | `GET` | `/admin` — tabela de obras | `GET /api/photos?limit=100` | Navegador |
+| `POST` | `/admin` — tela de login | `POST /api/auth/login` | Navegador |
 | `POST` | `/cadastro` — botão "Enviar cadastro" | `POST /api/customers` | Navegador |
 | `POST` | `/admin` — botão "Cadastrar obra" | `POST /api/photos` (multipart) | Navegador |
 | `PUT` | `/admin` — "Editar" → "Salvar" na linha | `PUT /api/photos/{id}` (multipart) | Navegador |
@@ -50,9 +51,17 @@ servidor do Next (`API_INTERNAL_URL`) ou no navegador (`NEXT_PUBLIC_API_URL`).
 - **Tela:** painel com a tabela de todas as obras, publicadas ou não.
 - **Chamada:** `listPhotos()`, usada por
   [`src/components/AdminPanel.tsx`](../src/components/AdminPanel.tsx).
-- **Como disparar:** abrir `/admin`. Não precisa de token.
+- **Como disparar:** entrar no painel. A listagem é pública; a escrita é que exige o token.
 
 ## POST
+
+### `/admin` — login do painel
+
+- **Chamada:** `login()` em [`src/lib/auth.ts`](../src/lib/auth.ts), usada por
+  [`src/components/AdminLogin.tsx`](../src/components/AdminLogin.tsx).
+- **Como disparar:** abrir `/admin`, informar usuário e senha e clicar em **Entrar**. A
+  API devolve o token que as chamadas de escrita passam a enviar; credenciais erradas
+  respondem `401`.
 
 ### `/cadastro` — cadastro de cliente
 
@@ -66,8 +75,8 @@ servidor do Next (`API_INTERNAL_URL`) ou no navegador (`NEXT_PUBLIC_API_URL`).
 - **Chamada:** `createPhoto()` em [`src/lib/photos.ts`](../src/lib/photos.ts), com corpo
   `multipart/form-data` (imagem + metadados) e header `X-Admin-Token`. Usada por
   [`src/components/NewPhotoForm.tsx`](../src/components/NewPhotoForm.tsx).
-- **Como disparar:** colar o token no topo do painel, escolher a imagem (aparece o preview
-  local), preencher os campos e clicar em **Cadastrar obra**.
+- **Como disparar:** depois do login, escolher a imagem (aparece o preview local),
+  preencher os campos e clicar em **Cadastrar obra**.
 
 ## PUT
 
@@ -76,8 +85,8 @@ servidor do Next (`API_INTERNAL_URL`) ou no navegador (`NEXT_PUBLIC_API_URL`).
 - **Chamada:** `updatePhoto()` em [`src/lib/photos.ts`](../src/lib/photos.ts), com corpo
   `multipart/form-data` e header `X-Admin-Token`. Usada por
   [`src/components/AdminPhotoRow.tsx`](../src/components/AdminPhotoRow.tsx).
-- **Como disparar:** com o token informado, clicar em **Editar** numa linha da tabela,
-  alterar os campos que abrem na própria linha e clicar em **Salvar**.
+- **Como disparar:** depois do login, clicar em **Editar** numa linha da tabela, alterar
+  os campos que abrem na própria linha e clicar em **Salvar**.
 
 ## DELETE
 
@@ -86,7 +95,7 @@ servidor do Next (`API_INTERNAL_URL`) ou no navegador (`NEXT_PUBLIC_API_URL`).
 - **Chamada:** `deletePhoto()` em [`src/lib/photos.ts`](../src/lib/photos.ts), com header
   `X-Admin-Token`. Usada por
   [`src/components/AdminPhotoRow.tsx`](../src/components/AdminPhotoRow.tsx).
-- **Como disparar:** com o token informado, clicar em **Excluir** numa linha e confirmar em
+- **Como disparar:** depois do login, clicar em **Excluir** numa linha e confirmar em
   **Excluir** na pergunta "Excluir obra e imagem?". A API apaga o registro e o arquivo.
 
 ## Como observar as chamadas
