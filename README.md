@@ -46,6 +46,7 @@ de [`docs/arquitetura.mmd`](docs/arquitetura.mmd)).
 | **atelie-web** | Interface. Renderiza as páginas e chama a API via REST. |
 | **atelie-api** | API REST. Regras de negócio, upload de imagens e consumo do ViaCEP. |
 | **PostgreSQL** | Persistência das obras (`photos`) e dos clientes (`customers`). |
+| **RustFS** | Armazenamento de objetos com API compatível com S3, onde ficam as imagens. |
 | **ViaCEP** | Serviço externo de consulta de CEP, chamado **somente pela API**. |
 
 ### Duas URLs para a mesma API
@@ -63,7 +64,8 @@ conta própria.
 As imagens são um terceiro caso: quem baixa o arquivo original é o otimizador do
 `next/image`, que roda no servidor. O [`next.config.ts`](next.config.ts) reescreve
 `/media/*` para `API_INTERNAL_URL/media/*`, e os componentes usam o `image_path` relativo
-devolvido pela API (`/media/a1b2.jpg`).
+devolvido pela API (`/media/a1b2.jpg`). A API, por sua vez, lê o arquivo do armazenamento
+de objetos — nem o navegador nem a interface conhecem o endereço do storage.
 
 ## Pré-requisitos
 
@@ -97,8 +99,8 @@ cp .env.example .env
 docker compose up --build
 ```
 
-Os três serviços sobem com healthcheck (`db` → `api` → `web`, cada um esperando o
-anterior ficar saudável).
+Os quatro serviços sobem com healthcheck (`db` e `storage` → `api` → `web`, cada um
+esperando os anteriores ficarem saudáveis).
 
 | Endereço | O que é |
 | --- | --- |
@@ -106,6 +108,7 @@ anterior ficar saudável).
 | http://localhost:3000/admin | Painel (pede o `ADMIN_TOKEN` do `.env`) |
 | http://localhost:8000/docs | Swagger da API |
 | http://localhost:8000/health | Health check da API e do banco |
+| http://localhost:9001/rustfs/console | Console do armazenamento de objetos |
 
 Para popular o catálogo com 20 obras de exemplo e 5 clientes (as fotos são imagens do
 Unsplash versionadas na `atelie-api`, sob a Unsplash License — ver os créditos no
@@ -137,6 +140,10 @@ versionado; o modelo versionado é o [`.env.example`](.env.example).
 | `ADMIN_USERNAME` | api | Usuário da tela de login do painel | `admin` |
 | `ADMIN_PASSWORD` | api | Senha da tela de login do painel | `troque-esta-senha` |
 | `ADMIN_TOKEN` | api | Token esperado no header `X-Admin-Token` | `troque-este-token` |
+| `S3_ENDPOINT_URL` | api | Endereço do armazenamento de objetos | `http://storage:9000` |
+| `S3_BUCKET` | api | Bucket das imagens | `atelie-media` |
+| `S3_ACCESS_KEY` | storage, api | Chave de acesso do armazenamento | `atelie` |
+| `S3_SECRET_KEY` | storage, api | Chave secreta do armazenamento | `troque-esta-chave` |
 | `API_INTERNAL_URL` | web | API vista pelo **servidor** do Next | `http://api:8000` |
 | `NEXT_PUBLIC_API_URL` | web | API vista pelo **navegador** | `http://localhost:8000` |
 

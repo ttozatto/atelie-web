@@ -7,7 +7,7 @@ flowchart TB
         web["<b>atelie-web</b><br/>Next.js 15 · :3000"]
         api["<b>atelie-api</b><br/>FastAPI · :8000"]
         db[("<b>PostgreSQL 16</b><br/>:5432 · volume pgdata")]
-        media[("<b>volume media</b><br/>/app/media")]
+        storage[("<b>RustFS</b><br/>armazenamento de objetos<br/>API compatível com S3")]
     end
 
     viacep["<b>ViaCEP</b><br/>viacep.com.br<br/>serviço externo"]
@@ -17,5 +17,5 @@ flowchart TB
     web -- "REST: galeria e obra<br/>API_INTERNAL_URL" --> api
     web -. "/media (next/image)" .-> api
     api -- "SQLAlchemy" --> db
-    api -- "imagens" --> media
+    api -- "imagens (boto3/S3)" --> storage
     api -- "GET /ws/{cep}/json/" --> viacep
