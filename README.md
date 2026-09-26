@@ -28,8 +28,8 @@ flowchart TB
     viacep["<b>ViaCEP</b><br/>viacep.com.br<br/>serviço externo"]
 
     browser -- "páginas" --> web
-    browser -- "REST: /cadastro e /admin<br/>NEXT_PUBLIC_API_URL" --> api
-    web -- "REST: galeria e obra<br/>API_INTERNAL_URL" --> api
+    browser -- "REST após o carregamento:<br/>cadastro, painel, rolagem da galeria<br/>NEXT_PUBLIC_API_URL" --> api
+    web -- "REST na renderização:<br/>1ª página da galeria e obra<br/>API_INTERNAL_URL" --> api
     web -. "/media (next/image)" .-> api
     api -- "SQLAlchemy" --> db
     api -- "imagens (boto3/S3)" --> storage
@@ -49,15 +49,27 @@ partir de [`docs/arquitetura.mmd`](docs/arquitetura.mmd) — que é a fonte do d
 
 ### Duas URLs para a mesma API
 
+Toda ação começa no navegador, mas o diagrama mostra **quem abre a conexão HTTP** com a
+API — e o servidor do Next também é cliente dela. Ao abrir a galeria, por exemplo, o
+navegador pede a página ao Next, e o Next pede os dados à API para montar o HTML; o
+navegador só recebe o resultado.
+
 A interface alcança a API por dois caminhos, e a escolha está concentrada num único
 arquivo, [`src/lib/api.ts`](src/lib/api.ts) — nenhum componente monta URL de API por
 conta própria.
 
-- **Servidor do Next** (galeria e página da obra, que são Server Components): fala com
-  `API_INTERNAL_URL` = `http://api:8000`, o nome do serviço na rede interna do Docker.
-- **Navegador** (cadastro e painel, que são Client Components): fala com
-  `NEXT_PUBLIC_API_URL` = `http://localhost:8000`, a porta publicada no host. O navegador
-  não conhece o nome `api`; por isso a API libera essa origem no CORS.
+- **Servidor do Next, na renderização** (primeira página da galeria e página da obra,
+  que são Server Components): fala com `API_INTERNAL_URL` = `http://api:8000`, o nome do
+  serviço na rede interna do Docker.
+- **Navegador, depois que a página carregou** (cadastro, painel e as páginas seguintes da
+  rolagem infinita, em Client Components): fala com `NEXT_PUBLIC_API_URL` =
+  `http://localhost:8000`, a porta publicada no host. O navegador não conhece o nome
+  `api`; por isso a API libera essa origem no CORS.
+
+O log da API mostra a diferença pelo IP de quem chamou (`docker compose logs -f api`):
+a primeira página da galeria chega com o IP do contêiner `web` na rede do Docker
+(`172.x.x.x`); as páginas seguintes da rolagem chegam com o IP da máquina onde o
+navegador está.
 
 As imagens são um terceiro caso: quem baixa o arquivo original é o otimizador do
 `next/image`, que roda no servidor. O [`next.config.ts`](next.config.ts) reescreve

@@ -13,8 +13,8 @@ flowchart TB
     viacep["<b>ViaCEP</b><br/>viacep.com.br<br/>serviço externo"]
 
     browser -- "páginas" --> web
-    browser -- "REST: /cadastro e /admin<br/>NEXT_PUBLIC_API_URL" --> api
-    web -- "REST: galeria e obra<br/>API_INTERNAL_URL" --> api
+    browser -- "REST após o carregamento:<br/>cadastro, painel, rolagem da galeria<br/>NEXT_PUBLIC_API_URL" --> api
+    web -- "REST na renderização:<br/>1ª página da galeria e obra<br/>API_INTERNAL_URL" --> api
     web -. "/media (next/image)" .-> api
     api -- "SQLAlchemy" --> db
     api -- "imagens (boto3/S3)" --> storage
