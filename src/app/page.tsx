@@ -1,10 +1,10 @@
 import { Suspense } from 'react';
 import { GalleryFilters } from '@/components/GalleryFilters';
 import { GallerySkeleton } from '@/components/GallerySkeleton';
-import { PhotoCard } from '@/components/PhotoCard';
+import { PhotoGallery } from '@/components/PhotoGallery';
 import { StateMessage } from '@/components/StateMessage';
 import { CATEGORY_LABELS } from '@/lib/format';
-import { listPhotos } from '@/lib/photos';
+import { GALLERY_PAGE_SIZE, listPhotos } from '@/lib/photos';
 import { isPhotoCategory, type PhotoCategory } from '@/lib/types';
 
 interface GalleryPageProps {
@@ -42,7 +42,13 @@ export default async function GalleryPage({ searchParams }: GalleryPageProps) {
 }
 
 async function GalleryResults({ q, category }: { q: string; category?: PhotoCategory }) {
-  const page = await listPhotos({ q: q || undefined, category, isPublished: true });
+  // Só a primeira página vem do servidor; o resto a galeria busca conforme a rolagem.
+  const page = await listPhotos({
+    q: q || undefined,
+    category,
+    isPublished: true,
+    limit: GALLERY_PAGE_SIZE,
+  });
 
   if (page.items.length === 0) {
     const filtered = Boolean(q || category);
@@ -68,13 +74,12 @@ async function GalleryResults({ q, category }: { q: string; category?: PhotoCate
       <p className="mb-8 text-sm text-muted" aria-live="polite">
         {summary}
       </p>
-      <ul className="grid grid-cols-1 gap-x-8 gap-y-14 sm:grid-cols-2 lg:grid-cols-3">
-        {page.items.map((photo, index) => (
-          <li key={photo.id}>
-            <PhotoCard photo={photo} priority={index < 3} />
-          </li>
-        ))}
-      </ul>
+      <PhotoGallery
+        initialPhotos={page.items}
+        total={page.total}
+        q={q}
+        category={category}
+      />
     </>
   );
 }

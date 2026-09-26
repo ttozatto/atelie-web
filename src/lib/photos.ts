@@ -1,6 +1,9 @@
 import { apiFetch } from './api';
 import type { Page, Photo, PhotoCategory } from './types';
 
+/** Quantas obras a galeria carrega por vez, no servidor e na rolagem. */
+export const GALLERY_PAGE_SIZE = 6;
+
 export interface PhotoFilters {
   q?: string;
   category?: PhotoCategory;

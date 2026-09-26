@@ -9,7 +9,8 @@ servidor do Next (`API_INTERNAL_URL`) ou no navegador (`NEXT_PUBLIC_API_URL`).
 
 | Método | Tela | Rota da API | Onde a chamada é feita |
 | --- | --- | --- | --- |
-| `GET` | `/` — galeria | `GET /api/photos?is_published=true&q=…&category=…` | Servidor do Next |
+| `GET` | `/` — galeria, primeira página | `GET /api/photos?is_published=true&limit=6` | Servidor do Next |
+| `GET` | `/` — rolagem infinita | `GET /api/photos?…&limit=6&offset=N` | Navegador |
 | `GET` | `/obra/[id]` — página da obra | `GET /api/photos/{id}` | Servidor do Next |
 | `GET` | `/cadastro` — ao sair do campo CEP | `GET /api/cep/{cep}` | Navegador |
 | `GET` | `/admin` — tabela de obras | `GET /api/photos?limit=100` | Navegador |
@@ -29,6 +30,10 @@ servidor do Next (`API_INTERNAL_URL`) ou no navegador (`NEXT_PUBLIC_API_URL`).
 - **Como disparar:** abrir a galeria, buscar um termo ou clicar numa categoria. A busca é
   um formulário `GET` na própria página (`/?q=serra&category=paisagem`), e cada busca gera
   uma nova chamada à API.
+- **Rolagem infinita:** a primeira página (6 obras) vem do servidor; ao rolar até o fim da
+  grade, [`src/components/PhotoGallery.tsx`](../src/components/PhotoGallery.tsx) pede a
+  próxima com `limit=6&offset=N` — essas chamadas **saem do navegador** e aparecem na aba
+  Network.
 
 ### `/obra/[id]` — página da obra
 
@@ -102,9 +107,9 @@ servidor do Next (`API_INTERNAL_URL`) ou no navegador (`NEXT_PUBLIC_API_URL`).
 
 - **Chamadas do navegador** (`/cadastro` e `/admin`): DevTools → aba **Network**, filtro
   **Fetch/XHR**. Aparecem com o método, a URL da API e o status.
-- **Chamadas do servidor do Next** (`/` e `/obra/[id]`): não aparecem na aba Network,
-  porque saem do contêiner `web` direto para a API pela rede interna do Docker. Aparecem
-  no log da API:
+- **Chamadas do servidor do Next** (a primeira página da galeria e a página da obra): não
+  aparecem na aba Network, porque saem do contêiner `web` direto para a API pela rede
+  interna do Docker. Aparecem no log da API:
 
   ```bash
   docker compose logs -f api

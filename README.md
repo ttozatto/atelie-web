@@ -165,7 +165,7 @@ afetadas, porque buscam os dados pela rede interna.
 
 | Rota | Tela | Chamadas à API |
 | --- | --- | --- |
-| `/` | Galeria das obras publicadas, com busca por texto e filtro por categoria | `GET /api/photos` |
+| `/` | Galeria das obras publicadas, com busca, filtro por categoria e rolagem infinita | `GET /api/photos` |
 | `/obra/[id]` | Foto grande, descrição, formatos e preço em BRL | `GET /api/photos/{id}` |
 | `/cadastro` | Cadastro de cliente com endereço preenchido pelo CEP | `GET /api/cep/{cep}`, `POST /api/customers` |
 | `/admin` | Login e painel: nova obra com upload, edição inline e exclusão | `POST /api/auth/login`, `GET`, `POST`, `PUT` e `DELETE /api/photos` |
@@ -176,6 +176,23 @@ O mapeamento detalhado de cada método HTTP para a tela e o botão que o dispara
 Toda tela que busca dados tem estado de carregando, vazio e erro. A busca e o filtro da
 galeria funcionam sem JavaScript no cliente: o formulário faz `GET` na própria página e o
 estado fica na URL (`/?q=serra&category=paisagem`).
+
+### Rolagem infinita na galeria
+
+A galeria carrega **6 obras por vez** (`GALLERY_PAGE_SIZE`, em
+[`src/lib/photos.ts`](src/lib/photos.ts)), usando a paginação `limit`/`offset` da API:
+
+- A **primeira página vem do servidor**, junto com o HTML. Quem chega pela galeria já vê
+  seis obras na primeira pintura, e elas continuam visíveis sem JavaScript.
+- As **páginas seguintes são buscadas pelo navegador**
+  ([`src/components/PhotoGallery.tsx`](src/components/PhotoGallery.tsx)): um
+  `IntersectionObserver` observa uma sentinela no fim da lista e, quando ela se aproxima
+  da tela (400 px antes), pede o próximo `GET /api/photos?limit=6&offset=…`.
+
+O rodapé mostra "6 de 19 obras" enquanto houver mais, e avisa quando o catálogo acaba.
+Uma busca ou categoria com seis resultados ou menos não dispara carregamento nenhum.
+Erros de rede aparecem com um botão "Tentar de novo", e obras repetidas são descartadas
+caso o catálogo mude entre uma página e outra.
 
 ## ViaCEP
 
@@ -253,18 +270,6 @@ botão "Sair" no topo do painel.
 > **Isto é um placeholder de MVP acadêmico, não autenticação de verdade.** Um único
 > usuário, senha em texto puro no ambiente, token fixo sem expiração e sem revogação. As
 > limitações estão detalhadas no README da `atelie-api`.
-
-## Decisões e limitações conhecidas
-
-- **Obra inexistente responde `200`.** A página da obra tem estado de carregamento
-  (`loading.tsx`), o que faz o Next enviar a resposta em streaming; quando a obra não
-  existe, o status já foi enviado. A tela mostra "Obra não encontrada" e o Next marca a
-  página com `noindex`. Sem o `loading.tsx` o status seria `404`, mas a tela perderia o
-  estado de carregamento.
-- **Healthcheck em `/healthz`.** Rota leve que não renderiza página nem chama a API, para
-  a saúde do `web` não depender da `api`.
-- **Galeria sem paginação na tela.** A API pagina (`limit`/`offset`); a galeria pede até
-  100 obras, suficiente para o catálogo do MVP.
 
 ## Qualidade
 
