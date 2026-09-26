@@ -36,10 +36,8 @@ flowchart TB
     api -- "GET /ws/{cep}/json/" --> viacep
 ```
 
-A mesma figura em imagem: [`docs/arquitetura.png`](docs/arquitetura.png) (gerada a partir
-de [`docs/arquitetura.mmd`](docs/arquitetura.mmd)).
-
-![Arquitetura do Ateliê](docs/arquitetura.png)
+A mesma figura em PNG está em [`docs/arquitetura.png`](docs/arquitetura.png), gerada a
+partir de [`docs/arquitetura.mmd`](docs/arquitetura.mmd) — que é a fonte do diagrama acima.
 
 | Componente | Papel |
 | --- | --- |
@@ -139,7 +137,7 @@ versionado; o modelo versionado é o [`.env.example`](.env.example).
 | `CORS_ORIGINS` | api | Origens liberadas no CORS, separadas por vírgula | `http://localhost:3000` |
 | `ADMIN_USERNAME` | api | Usuário da tela de login do painel | `admin` |
 | `ADMIN_PASSWORD` | api | Senha da tela de login do painel | `troque-esta-senha` |
-| `ADMIN_TOKEN` | api | Token esperado no header `X-Admin-Token` | `troque-este-token` |
+| `ADMIN_TOKEN` | api | Token que o login devolve e que as rotas de escrita exigem no header `X-Admin-Token` | `troque-este-token` |
 | `S3_ENDPOINT_URL` | api | Endereço do armazenamento de objetos | `http://storage:9000` |
 | `S3_BUCKET` | api | Bucket das imagens | `atelie-media` |
 | `S3_ACCESS_KEY` | storage, api | Chave de acesso do armazenamento | `atelie` |
@@ -235,9 +233,18 @@ está em `atelie-api/app/services/viacep.py`, e a da tela em
 ## Painel e autenticação
 
 `/admin` abre uma tela de login com **usuário e senha**. As credenciais não estão na
-interface: o formulário chama `POST /api/auth/login` na API, que as compara com as
-variáveis `ADMIN_USERNAME` e `ADMIN_PASSWORD` e devolve o token usado no header
-`X-Admin-Token` das rotas de escrita.
+interface: o formulário chama `POST /api/auth/login` na API, que as compara com
+`ADMIN_USERNAME` e `ADMIN_PASSWORD`.
+
+As três variáveis continuam necessárias, cada uma com um papel:
+
+1. **`ADMIN_USERNAME` e `ADMIN_PASSWORD`** são o que a pessoa digita na tela de login.
+2. **`ADMIN_TOKEN`** é o que o login devolve quando as credenciais batem. É ele que a
+   interface envia no header `X-Admin-Token` a cada `POST`, `PUT` e `DELETE` de obra, e é
+   ele que a API confere para autorizar a escrita.
+
+Ou seja, a tela de login não substituiu o token: ela passou a ser a única forma de
+obtê-lo. Antes, quem usava o painel precisava colar o valor de `ADMIN_TOKEN` à mão.
 
 A sessão (usuário e token) fica **só em estado de memória** do React: não vai para
 `localStorage`, cookie nem URL. Ou seja, recarregar a página pede login de novo, e há um
