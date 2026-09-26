@@ -28,9 +28,8 @@ flowchart TB
     viacep["<b>ViaCEP</b><br/>viacep.com.br<br/>serviço externo"]
 
     browser -- "páginas" --> web
-    browser -- "REST após o carregamento:<br/>cadastro, painel, rolagem da galeria<br/>NEXT_PUBLIC_API_URL" --> api
-    web -- "REST na renderização:<br/>1ª página da galeria e obra<br/>API_INTERNAL_URL" --> api
-    web -. "/media (next/image)" .-> api
+    browser -- "o navegador busca direto:<br/>rolagem, cadastro, painel" --> api
+    web -- "o Next busca e entrega pronto:<br/>1ª página e imagens" --> api
     api -- "SQLAlchemy" --> db
     api -- "imagens (boto3/S3)" --> storage
     api -- "GET /ws/{cep}/json/" --> viacep
@@ -47,35 +46,28 @@ partir de [`docs/arquitetura.mmd`](docs/arquitetura.mmd) — que é a fonte do d
 | **RustFS** | Armazenamento de objetos com API compatível com S3, onde ficam as imagens. |
 | **ViaCEP** | Serviço externo de consulta de CEP, chamado **somente pela API**. |
 
-### Duas URLs para a mesma API
+### As duas setas até a API
 
-Toda ação começa no navegador, mas o diagrama mostra **quem abre a conexão HTTP** com a
-API — e o servidor do Next também é cliente dela. Ao abrir a galeria, por exemplo, o
-navegador pede a página ao Next, e o Next pede os dados à API para montar o HTML; o
-navegador só recebe o resultado.
+A diferença entre elas é **quem faz a chamada**:
 
-A interface alcança a API por dois caminhos, e a escolha está concentrada num único
-arquivo, [`src/lib/api.ts`](src/lib/api.ts) — nenhum componente monta URL de API por
-conta própria.
+- **O navegador busca direto** — na rolagem infinita, no cadastro e no painel, o
+  JavaScript da página chama a API e mostra o resultado. Usa `NEXT_PUBLIC_API_URL`
+  (`http://localhost:8000`, a porta publicada), e por isso a API libera essa origem no
+  CORS.
+- **O Next busca e entrega pronto** — para a primeira página da galeria e a página da
+  obra, o servidor do Next busca os dados e responde ao navegador com o HTML já montado;
+  para as fotos, o `next/image` busca o original e entrega uma versão redimensionada. O
+  navegador nunca vê essas chamadas. Usa `API_INTERNAL_URL` (`http://api:8000`, a rede
+  interna do Docker).
 
-- **Servidor do Next, na renderização** (primeira página da galeria e página da obra,
-  que são Server Components): fala com `API_INTERNAL_URL` = `http://api:8000`, o nome do
-  serviço na rede interna do Docker.
-- **Navegador, depois que a página carregou** (cadastro, painel e as páginas seguintes da
-  rolagem infinita, em Client Components): fala com `NEXT_PUBLIC_API_URL` =
-  `http://localhost:8000`, a porta publicada no host. O navegador não conhece o nome
-  `api`; por isso a API libera essa origem no CORS.
+A escolha entre as duas URLs está concentrada num único arquivo,
+[`src/lib/api.ts`](src/lib/api.ts): nenhum componente monta URL de API por conta
+própria. Para as imagens, o [`next.config.ts`](next.config.ts) reescreve `/media/*` para
+a URL interna, e os componentes usam o `image_path` relativo que a API devolve.
 
-O log da API mostra a diferença pelo IP de quem chamou (`docker compose logs -f api`):
-a primeira página da galeria chega com o IP do contêiner `web` na rede do Docker
-(`172.x.x.x`); as páginas seguintes da rolagem chegam com o IP da máquina onde o
-navegador está.
-
-As imagens são um terceiro caso: quem baixa o arquivo original é o otimizador do
-`next/image`, que roda no servidor. O [`next.config.ts`](next.config.ts) reescreve
-`/media/*` para `API_INTERNAL_URL/media/*`, e os componentes usam o `image_path` relativo
-devolvido pela API (`/media/a1b2.jpg`). A API, por sua vez, lê o arquivo do armazenamento
-de objetos — nem o navegador nem a interface conhecem o endereço do storage.
+Dá para ver a diferença no log da API (`docker compose logs -f api`): o que o Next busca
+chega com o IP do contêiner `web` (`172.x.x.x`); o que o navegador busca chega com o IP
+da máquina onde ele está.
 
 ## Pré-requisitos
 
