@@ -22,7 +22,7 @@ flowchart TB
         web["<b>atelie-web</b><br/>Next.js 15 · :3000"]
         api["<b>atelie-api</b><br/>FastAPI · :8000"]
         db[("<b>PostgreSQL 16</b><br/>:5432 · volume pgdata")]
-        media[("<b>volume media</b><br/>/app/media")]
+        storage[("<b>RustFS</b><br/>armazenamento de objetos<br/>API compatível com S3")]
     end
 
     viacep["<b>ViaCEP</b><br/>viacep.com.br<br/>serviço externo"]
@@ -32,7 +32,7 @@ flowchart TB
     web -- "REST: galeria e obra<br/>API_INTERNAL_URL" --> api
     web -. "/media (next/image)" .-> api
     api -- "SQLAlchemy" --> db
-    api -- "imagens" --> media
+    api -- "imagens (boto3/S3)" --> storage
     api -- "GET /ws/{cep}/json/" --> viacep
 ```
 
@@ -105,7 +105,7 @@ esperando os anteriores ficarem saudáveis).
 | Endereço | O que é |
 | --- | --- |
 | http://localhost:3000 | Interface |
-| http://localhost:3000/admin | Painel (pede o `ADMIN_TOKEN` do `.env`) |
+| http://localhost:3000/admin | Painel (entra com `ADMIN_USERNAME` e `ADMIN_PASSWORD`) |
 | http://localhost:8000/docs | Swagger da API |
 | http://localhost:8000/health | Health check da API e do banco |
 | http://localhost:9001/rustfs/console | Console do armazenamento de objetos |
@@ -127,7 +127,7 @@ docker compose down -v
 
 ## Variáveis de ambiente
 
-O `.env` na raiz deste repositório alimenta os três serviços do compose. Ele **não** é
+O `.env` na raiz deste repositório alimenta os quatro serviços do compose. Ele **não** é
 versionado; o modelo versionado é o [`.env.example`](.env.example).
 
 | Variável | Serviço | Descrição | Valor padrão |
