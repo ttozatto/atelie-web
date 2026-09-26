@@ -189,10 +189,16 @@ A galeria carrega **6 obras por vez** (`GALLERY_PAGE_SIZE`, em
   `IntersectionObserver` observa uma sentinela no fim da lista e, quando ela se aproxima
   da tela (400 px antes), pede o próximo `GET /api/photos?limit=6&offset=…`.
 
-Enquanto a próxima página vem, as **molduras vazias dela já aparecem na grade**, no lugar
-onde as fotos vão entrar — o sinal de carregamento fica onde a pessoa está olhando, e o
-layout não salta quando as imagens chegam. O rodapé acompanha com "6 de 19 obras",
-"Carregando mais obras…" ou o aviso de fim do catálogo.
+Enquanto a próxima página vem, o carregamento é sinalizado em dois lugares, porque um só
+não bastava:
+
+- **Molduras vazias na grade**, no lugar onde as fotos vão entrar — evitam o salto de
+  layout quando as imagens chegam.
+- **Um indicador preso à janela** ("Carregando mais obras…", com spinner), no rodapé da
+  área visível. As molduras entram logo abaixo de onde a pessoa está quando a rolagem
+  dispara a busca, e muitas vezes ficam fora da tela; o indicador fixo aparece sempre.
+
+O rodapé da lista acompanha com "6 de 19 obras" ou o aviso de fim do catálogo.
 
 Uma busca ou categoria com seis resultados ou menos não dispara carregamento nenhum.
 Erros de rede aparecem com um botão "Tentar de novo", e obras repetidas são descartadas

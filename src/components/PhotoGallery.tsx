@@ -103,6 +103,20 @@ export function PhotoGallery({ initialPhotos, total, q, category }: PhotoGallery
           : null}
       </ul>
 
+      {/* Indicador presa à janela: as molduras acima podem estar fora da área visível
+          quando a rolagem dispara a busca, e este aviso aparece de qualquer jeito. */}
+      {loading ? (
+        <div
+          role="status"
+          className="pointer-events-none fixed inset-x-0 bottom-6 z-10 flex justify-center px-5"
+        >
+          <span className="flex items-center gap-3 border border-line bg-paper/95 px-5 py-2.5 text-sm shadow-sm">
+            <span className="size-3.5 animate-spin rounded-full border-2 border-line border-t-ink" />
+            Carregando mais obras…
+          </span>
+        </div>
+      ) : null}
+
       <div className="mt-14 flex flex-col items-center gap-4 text-sm text-muted">
         <p aria-live="polite">
           {loading
