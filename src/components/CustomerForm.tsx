@@ -5,6 +5,7 @@ import { ApiError } from '@/lib/api';
 import { createCustomer, lookupCep, type CustomerPayload } from '@/lib/customers';
 import { errorMessage } from '@/lib/errors';
 import { maskCep, maskPhone, onlyDigits } from '@/lib/masks';
+import { useHydrated } from '@/lib/useHydrated';
 import { FormField, inputClassName } from './FormField';
 
 const EMPTY_VALUES = {
@@ -81,6 +82,8 @@ export function CustomerForm() {
   const streetRef = useRef<HTMLInputElement>(null);
   // Ultimo CEP consultado: evita consulta repetida e descarta respostas atrasadas.
   const lastLookupRef = useRef('');
+  // Desabilitado ate a hidratacao: ver useHydrated.
+  const hydrated = useHydrated();
 
   function setField(field: keyof FormValues, value: string) {
     setValues((current) => ({ ...current, [field]: value }));
@@ -158,8 +161,12 @@ export function CustomerForm() {
   const cepMessage = CEP_MESSAGES[cepStatus];
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-12">
-      <fieldset disabled={submitting} className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+    // method="post": se algum envio nativo escapar, os dados pessoais nao vao para a URL.
+    <form method="post" onSubmit={handleSubmit} className="flex flex-col gap-12">
+      <fieldset
+        disabled={submitting || !hydrated}
+        className="grid grid-cols-1 gap-5 sm:grid-cols-2"
+      >
         <legend className="mb-6 font-serif text-2xl">Seus dados</legend>
 
         <FormField label="Nome completo" htmlFor="full_name" className="sm:col-span-2">
@@ -206,7 +213,7 @@ export function CustomerForm() {
         </FormField>
       </fieldset>
 
-      <fieldset disabled={submitting} className="grid grid-cols-6 gap-5">
+      <fieldset disabled={submitting || !hydrated} className="grid grid-cols-6 gap-5">
         <legend className="mb-6 font-serif text-2xl">Endereço</legend>
 
         <FormField
@@ -329,7 +336,7 @@ export function CustomerForm() {
         ) : null}
         <button
           type="submit"
-          disabled={submitting}
+          disabled={submitting || !hydrated}
           className="bg-ink px-8 py-3 text-sm text-paper transition-opacity hover:opacity-85 disabled:opacity-50"
         >
           {submitting ? 'Enviando…' : 'Enviar cadastro'}

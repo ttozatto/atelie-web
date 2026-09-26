@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { login, type Session } from '@/lib/auth';
 import { errorMessage } from '@/lib/errors';
+import { useHydrated } from '@/lib/useHydrated';
 import { FormField, inputClassName } from './FormField';
 
 interface AdminLoginProps {
@@ -15,6 +16,14 @@ export function AdminLogin({ onAuthenticated }: AdminLoginProps) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const hydrated = useHydrated();
+  const usernameRef = useRef<HTMLInputElement>(null);
+
+  // O campo nasce desabilitado (ver useHydrated), entao o autofocus do HTML nao pega:
+  // o foco vai para o usuario assim que o formulario fica utilizavel.
+  useEffect(() => {
+    if (hydrated) usernameRef.current?.focus();
+  }, [hydrated]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -39,15 +48,16 @@ export function AdminLogin({ onAuthenticated }: AdminLoginProps) {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-        <fieldset disabled={submitting} className="flex flex-col gap-5">
+      {/* method="post": se algum envio nativo escapar, a senha nao vai para a URL. */}
+      <form method="post" onSubmit={handleSubmit} className="flex flex-col gap-5">
+        <fieldset disabled={submitting || !hydrated} className="flex flex-col gap-5">
           <FormField label="Usuário" htmlFor="username">
             <input
               id="username"
               name="username"
               required
               autoComplete="username"
-              autoFocus
+              ref={usernameRef}
               value={username}
               onChange={(event) => setUsername(event.target.value)}
               className={inputClassName}
@@ -76,7 +86,7 @@ export function AdminLogin({ onAuthenticated }: AdminLoginProps) {
 
         <button
           type="submit"
-          disabled={submitting}
+          disabled={submitting || !hydrated}
           className="bg-ink px-6 py-3 text-sm text-paper transition-opacity hover:opacity-85 disabled:opacity-50"
         >
           {submitting ? 'Entrando…' : 'Entrar'}
