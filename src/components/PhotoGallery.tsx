@@ -5,9 +5,13 @@ import { errorMessage } from '@/lib/errors';
 import { GALLERY_PAGE_SIZE, listPhotos } from '@/lib/photos';
 import type { Photo, PhotoCategory } from '@/lib/types';
 import { PhotoCard } from './PhotoCard';
+import { PhotoCardSkeleton } from './PhotoCardSkeleton';
 
-/** Distância do fim da lista em que a próxima página começa a ser buscada. */
-const PREFETCH_MARGIN = '400px';
+/**
+ * Distância do fim da lista em que a próxima página começa a ser buscada. Perto o
+ * bastante para as molduras de carregamento aparecerem na tela de quem está rolando.
+ */
+const PREFETCH_MARGIN = '200px';
 
 interface PhotoGalleryProps {
   /** Primeira página, já renderizada no servidor. */
@@ -78,24 +82,37 @@ export function PhotoGallery({ initialPhotos, total, q, category }: PhotoGallery
 
   return (
     <>
-      <ul className="grid grid-cols-1 gap-x-8 gap-y-14 sm:grid-cols-2 lg:grid-cols-3">
+      <ul
+        aria-busy={loading}
+        className="grid grid-cols-1 gap-x-8 gap-y-14 sm:grid-cols-2 lg:grid-cols-3"
+      >
         {photos.map((photo, index) => (
           <li key={photo.id}>
             <PhotoCard photo={photo} priority={index < 3} />
           </li>
         ))}
+
+        {/* Enquanto a próxima página vem, as molduras dela já ocupam o lugar na grade:
+            o sinal de carregamento aparece onde a pessoa está olhando. */}
+        {loading
+          ? Array.from({ length: Math.min(GALLERY_PAGE_SIZE, remaining) }, (_, index) => (
+              <li key={`carregando-${index}`} aria-hidden="true">
+                <PhotoCardSkeleton />
+              </li>
+            ))
+          : null}
       </ul>
 
       <div className="mt-14 flex flex-col items-center gap-4 text-sm text-muted">
         <p aria-live="polite">
-          {hasMore
-            ? `${photos.length} de ${total} obras`
-            : photos.length > GALLERY_PAGE_SIZE
-              ? 'Você chegou ao fim do catálogo.'
-              : null}
+          {loading
+            ? 'Carregando mais obras…'
+            : hasMore
+              ? `${photos.length} de ${total} obras`
+              : photos.length > GALLERY_PAGE_SIZE
+                ? 'Você chegou ao fim do catálogo.'
+                : null}
         </p>
-
-        {loading ? <p aria-busy="true">Carregando mais obras…</p> : null}
 
         {error ? (
           <>
